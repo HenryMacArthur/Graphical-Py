@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Graphical Py
+    </title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+
+<div id="app">
+<div id="toolbar">
+  <span style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-right:2px">Graphical Py</span>
+  <button class="tb-btn" id="undo-btn" onclick="undo()" disabled>↩ Undo</button>
+  <button class="tb-btn" id="redo-btn" onclick="redo()" disabled>↪ Redo</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="grid-btn" onclick="toggleGrid()">Grid</button>
+  <button class="tb-btn" id="snap-btn" onclick="toggleSnap()" class="active">Snap</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="alignSelected('left')">Align L</button>
+  <button class="tb-btn" onclick="alignSelected('center')">Center</button>
+  <button class="tb-btn" onclick="alignSelected('right')">Align R</button>
+  <button class="tb-btn" onclick="alignSelected('top')">Align T</button>
+  <button class="tb-btn" onclick="alignSelected('middle')">Middle</button>
+  <button class="tb-btn" onclick="alignSelected('bottom')">Align B</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="clearAll()">Clear All</button>
+  <button class="tb-btn" onclick="openImport()">Import</button>
+  <button class="tb-btn" onclick="exportProject()">Export</button>
+  <button class="tb-btn primary" onclick="openCode()">Generate code ↗</button>
+  <span style="font-size:10px;color:var(--color-text-tertiary);margin-left:4px" id="hist-label"></span>
+</div>
+<div id="win-bar">
+  <label>Window title</label>
+  <input id="win-title-in" value="My Application" oninput="winCfg.title=this.value">
+  <label style="margin-left:8px">Size</label>
+  <input id="win-w-in" type="number" value="800" oninput="winCfg.w=+this.value"> <span style="color:var(--color-text-tertiary)">×</span>
+  <input id="win-h-in" type="number" value="600" oninput="winCfg.h=+this.value">
+  <label style="margin-left:8px">Min size</label>
+  <input id="win-mw" type="number" value="0" style="width:48px" oninput="winCfg.minW=+this.value">
+  <span style="color:var(--color-text-tertiary)">×</span>
+  <input id="win-mh" type="number" value="0" style="width:48px" oninput="winCfg.minH=+this.value">
+  <label style="margin-left:8px">Resizable</label>
+  <select id="win-res" style="font-size:11px;padding:2px 4px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)" onchange="winCfg.resizable=this.value==='true'">
+    <option value="true">Yes</option><option value="false">No</option>
+  </select>
+</div>
+<div id="layout-bar">
+  <label>Layout</label>
+  <button class="layout-btn active" id="lb-none" onclick="setLayoutMode('none')">None (absolute)</button>
+  <button class="layout-btn" id="lb-vbox" onclick="setLayoutMode('vbox')">VBoxLayout</button>
+  <button class="layout-btn" id="lb-hbox" onclick="setLayoutMode('hbox')">HBoxLayout</button>
+  <button class="layout-btn" id="lb-grid" onclick="setLayoutMode('grid')">GridLayout</button>
+  <span id="layout-hint" style="color:var(--color-text-tertiary);font-size:10px;margin-left:6px"></span>
+</div>
+<div id="middle">
+  <div id="palette">
+    <h3>Widgets</h3>
+    <div class="pal-item" draggable="true" data-type="QPushButton">Button</div>
+    <div class="pal-item" draggable="true" data-type="QLabel">Label</div>
+    <div class="pal-item" draggable="true" data-type="QLineEdit">Line Edit</div>
+    <div class="pal-item" draggable="true" data-type="QTextEdit">Text Edit</div>
+    <div class="pal-item" draggable="true" data-type="QCheckBox">Check Box</div>
+    <div class="pal-item" draggable="true" data-type="QRadioButton">Radio Button</div>
+    <div class="pal-item" draggable="true" data-type="QComboBox">Combo Box</div>
+    <div class="pal-item" draggable="true" data-type="QSlider">Slider</div>
+    <div class="pal-item" draggable="true" data-type="QSpinBox">Spin Box</div>
+    <div class="pal-item" draggable="true" data-type="QProgressBar">Progress Bar</div>
+    <div class="pal-item" draggable="true" data-type="QListWidget">List Widget</div>
+    <div class="pal-item" draggable="true" data-type="QGroupBox">Group Box</div>
+    <div class="pal-item" draggable="true" data-type="QTabWidget">Tab Widget</div>
+    <div class="pal-item" draggable="true" data-type="QTableWidget">Table Widget</div>
+    <div class="pal-item" draggable="true" data-type="QMenuBar">Menu Bar</div>
+    <div class="pal-item" draggable="true" data-type="QStatusBar">Status Bar</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="grid-overlay"></div>
+    <div id="sel-rect"></div>
+    <div id="canvas">
+      <div id="drop-hint">Drag widgets here<br><span style="font-size:10px">Drop from palette</span></div>
+    </div>
+
+    <div id="code-modal" class="modal-bg">
+      <div class="modal" style="width:96%">
+        <header><span>Generated PySide6 code</span><div class="hbtns"><button class="tb-btn" onclick="copyCode()">Copy</button><button class="tb-btn" onclick="closeCode()">Close</button></div></header>
+        <div class="modal-body"><pre id="code-pre"></pre></div>
+      </div>
+    </div>
+    <div id="import-modal" class="modal-bg">
+      <div class="modal">
+        <header><span>Import project</span><div class="hbtns"><button class="tb-btn primary" onclick="doImport()">Load</button><button class="tb-btn" onclick="closeImport()">Cancel</button></div></header>
+        <div class="modal-body">
+          <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:7px">Paste exported JSON or pick a file.</p>
+          <input type="file" accept=".json" style="font-size:11px;margin-bottom:7px;display:block" onchange="loadFile(this)">
+          <textarea id="import-area" placeholder='{"version":2,"widgets":[...]}'></textarea>
+          <div id="import-err"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="props">
+    <h3>Properties</h3>
+    <div id="no-sel">Select a widget<br>or drag one in</div>
+    <div id="multi-panel">
+      <div id="multi-info"></div>
+      <button class="tb-btn" style="width:100%;margin-bottom:5px" onclick="groupSelected()">Wrap in QGroupBox</button>
+      <button id="del-btn" onclick="deleteSelected()">Delete selected</button>
+    </div>
+    <div id="prop-fields">
+      <div class="prop-row"><label>Type</label><input id="p-type" readonly style="color:var(--color-text-secondary)"></div>
+      <div class="prop-row"><label>Variable name</label><input id="p-name" oninput="updateProp('name',this.value)"></div>
+      <div class="prop-row"><label>Text / label</label><input id="p-text" oninput="updateProp('text',this.value)"></div>
+      <div class="prop-row"><label>Width</label><input id="p-w" type="number" oninput="updateProp('w',+this.value)"></div>
+      <div class="prop-row"><label>Height</label><input id="p-h" type="number" oninput="updateProp('h',+this.value)"></div>
+      <div class="prop-row"><label>X</label><input id="p-x" type="number" oninput="updateProp('x',+this.value)"></div>
+      <div class="prop-row"><label>Y</label><input id="p-y" type="number" oninput="updateProp('y',+this.value)"></div>
+      <div class="prop-row"><label>Enabled</label>
+        <select id="p-enabled" onchange="updateProp('enabled',this.value==='true')">
+          <option value="true">True</option><option value="false">False</option>
+        </select>
+      </div>
+      <div class="prop-row"><label>Tooltip</label><input id="p-tooltip" oninput="updateProp('tooltip',this.value)"></div>
+      <div class="prop-row" id="qss-row">
+        <label>QSS stylesheet</label>
+        <textarea id="p-qss" placeholder="color: red;&#10;font-size: 14px;" oninput="updateProp('qss',this.value)"></textarea>
+      </div>
+      <div class="prop-row" id="items-row" style="display:none">
+        <label>Items (one per line)</label>
+        <textarea id="p-items" placeholder="Item 1&#10;Item 2" oninput="updateProp('items',this.value)"></textarea>
+      </div>
+      <div class="prop-row" id="tabs-row" style="display:none">
+        <label>Tab names (one per line)</label>
+        <textarea id="p-tabs" placeholder="Tab 1&#10;Tab 2" oninput="updateProp('tabs',this.value)"></textarea>
+      </div>
+      <div class="prop-row" id="rows-row" style="display:none">
+        <label>Rows</label><input id="p-rows" type="number" value="3" oninput="updateProp('rows',+this.value)">
+      </div>
+      <div class="prop-row" id="cols-row" style="display:none">
+        <label>Columns</label><input id="p-cols" type="number" value="3" oninput="updateProp('cols',+this.value)">
+      </div>
+      <button id="del-btn" onclick="deleteSelected()">Delete widget</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+let widgets=[],selectedId=null,multiSel=new Set();
+let history=[],historyIdx=-1,idCounter=0;
+let layoutMode='none',snapEnabled=true,showGrid=false;
+let draggingWidget=null,palDragOver=false;
+let selBoxing=false,selStart={x:0,y:0};
+let winCfg={title:'My Application',w:800,h:600,minW:0,minH:0,resizable:true};
+
+const canvas=document.getElementById('canvas');
+const dropHint=document.getElementById('drop-hint');
+const palette=document.getElementById('palette');
+const selRect=document.getElementById('sel-rect');
+const SNAP=20;
+
+const defs={
+  QPushButton:{text:'Push Button',w:120,h:32},QLabel:{text:'Label',w:100,h:28},
+  QLineEdit:{text:'',w:160,h:32},QTextEdit:{text:'',w:180,h:100},
+  QCheckBox:{text:'Check Box',w:120,h:28},QRadioButton:{text:'Radio Button',w:130,h:28},
+  QComboBox:{text:'Combo Box',w:140,h:32},QSlider:{text:'',w:160,h:28},
+  QSpinBox:{text:'',w:100,h:32},QProgressBar:{text:'',w:180,h:28},
+  QListWidget:{text:'',w:180,h:120},QGroupBox:{text:'Group',w:200,h:140},
+  QTabWidget:{text:'Tab 1\nTab 2',w:260,h:180},QTableWidget:{text:'',rows:3,cols:3,w:220,h:140},
+  QMenuBar:{text:'File\nEdit\nView',w:300,h:24},QStatusBar:{text:'Ready',w:300,h:24},
+};
+
+const vis={
+  QPushButton:t=>`<div style="background:#4a90e2;color:#fff;border-radius:4px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px">${t||'Button'}</div>`,
+  QLabel:t=>`<span style="font-size:11px">${t||'Label'}</span>`,
+  QLineEdit:t=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;padding:0 5px;display:flex;align-items:center;font-size:11px;color:var(--color-text-tertiary)">${t||'Enter text…'}</div>`,
+  QTextEdit:t=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;padding:3px 5px;font-size:11px;color:var(--color-text-tertiary);overflow:hidden">${t||'Text…'}</div>`,
+  QCheckBox:t=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px"><div style="width:12px;height:12px;border:1px solid var(--color-border-secondary);border-radius:2px;flex-shrink:0"></div>${t||'CheckBox'}</div>`,
+  QRadioButton:t=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px"><div style="width:12px;height:12px;border:1px solid var(--color-border-secondary);border-radius:50%;flex-shrink:0"></div>${t||'Radio'}</div>`,
+  QComboBox:t=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;padding:0 5px;display:flex;align-items:center;justify-content:space-between;font-size:11px"><span>${(t||'').split('\n')[0]||'Select…'}</span><span style="font-size:8px;color:var(--color-text-secondary)">▼</span></div>`,
+  QSlider:()=>`<div style="width:100%;height:100%;display:flex;align-items:center"><div style="width:100%;height:3px;background:var(--color-border-tertiary);border-radius:2px;position:relative"><div style="position:absolute;left:40%;top:-4px;width:11px;height:11px;background:#4a90e2;border-radius:50%"></div></div></div>`,
+  QSpinBox:()=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;padding:0 5px;display:flex;align-items:center;justify-content:space-between;font-size:11px"><span>0</span><div style="font-size:7px;display:flex;flex-direction:column">▲▼</div></div>`,
+  QProgressBar:()=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;overflow:hidden"><div style="width:60%;height:100%;background:#4a90e2"></div></div>`,
+  QListWidget:t=>{const items=(t||'Item 1\nItem 2\nItem 3').split('\n').slice(0,4);return`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;overflow:hidden">${items.map((x,i)=>`<div style="padding:2px 5px;font-size:10px;${i===0?'background:#4a90e222':''}">${x}</div>`).join('')}</div>`;},
+  QGroupBox:t=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:14px 5px 3px;position:relative"><div style="position:absolute;top:-7px;left:7px;background:var(--color-background-primary);padding:0 3px;font-size:10px;color:var(--color-text-secondary)">${t||'Group'}</div></div>`,
+  QTabWidget:t=>{const tabs=(t||'Tab 1\nTab 2').split('\n').slice(0,4);return`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;overflow:hidden"><div style="display:flex;border-bottom:0.5px solid var(--color-border-secondary)">${tabs.map((x,i)=>`<div style="padding:3px 8px;font-size:10px;${i===0?'border-bottom:2px solid #4a90e2;color:#4a90e2':''}">${x}</div>`).join('')}</div><div style="padding:5px;font-size:10px;color:var(--color-text-tertiary)">${tabs[0]} content</div></div>`;},
+  QTableWidget:(t,w)=>`<div style="width:100%;height:100%;border:0.5px solid var(--color-border-secondary);border-radius:3px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:10px">${Array.from({length:Math.min(w.rows||3,4)},(_,r)=>`<tr>${Array.from({length:Math.min(w.cols||3,4)},(_,c)=>`<td style="border:0.5px solid var(--color-border-tertiary);padding:2px 4px;${r===0?'background:var(--color-background-secondary);font-weight:500':''}">${r===0?'Col '+(c+1):''}</td>`).join('')}</tr>`).join('')}</table></div>`,
+  QMenuBar:t=>{const items=(t||'File\nEdit').split('\n').slice(0,6);return`<div style="width:100%;height:100%;border-bottom:0.5px solid var(--color-border-secondary);display:flex;align-items:center;padding:0 4px;background:var(--color-background-secondary)">${items.map(x=>`<span style="padding:0 8px;font-size:11px">${x}</span>`).join('')}</div>`;},
+  QStatusBar:t=>`<div style="width:100%;height:100%;border-top:0.5px solid var(--color-border-secondary);display:flex;align-items:center;padding:0 7px;background:var(--color-background-secondary);font-size:10px;color:var(--color-text-secondary)">${t||'Ready'}</div>`,
+};
+
+function snap(v){return snapEnabled?Math.round(v/SNAP)*SNAP:Math.round(v);}
+
+function snapshot(){return JSON.parse(JSON.stringify({widgets,winCfg,layoutMode}));}
+function pushHistory(){
+  history=history.slice(0,historyIdx+1);
+  history.push(snapshot());
+  if(history.length>80)history.shift();
+  historyIdx=history.length-1;
+  updateUI();
+}
+function updateUI(){
+  document.getElementById('undo-btn').disabled=historyIdx<=0;
+  document.getElementById('redo-btn').disabled=historyIdx>=history.length-1;
+  document.getElementById('hist-label').textContent=widgets.length?`${widgets.length} widget${widgets.length>1?'s':''}` :'';
+}
+function restoreSnap(s){
+  document.querySelectorAll('.widget').forEach(e=>e.remove());
+  document.querySelectorAll('.layout-ghost').forEach(e=>e.remove());
+  widgets=JSON.parse(JSON.stringify(s.widgets));
+  winCfg=Object.assign({},s.winCfg||winCfg);
+  layoutMode=s.layoutMode||'none';
+  syncWinBar();
+  setLayoutMode(layoutMode,true);
+  widgets.forEach(w=>renderWidget(w));
+  dropHint.style.display=widgets.length?'none':'block';
+  multiSel.clear();
+  if(selectedId&&!widgets.find(w=>w.id===selectedId))deselect();
+  else if(selectedId)syncProps();
+  updateUI();
+}
+function undo(){if(historyIdx>0){historyIdx--;restoreSnap(history[historyIdx]);}}
+function redo(){if(historyIdx<history.length-1){historyIdx++;restoreSnap(history[historyIdx]);}}
+
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement.tagName;
+  const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redo();}
+  if((e.key==='Delete'||e.key==='Backspace')&&!inInput&&(selectedId||multiSel.size)){deleteSelected();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='a'&&!inInput){e.preventDefault();selectAll();}
+});
+
+function toggleGrid(){showGrid=!showGrid;document.getElementById('grid-overlay').classList.toggle('show',showGrid);document.getElementById('grid-btn').classList.toggle('active',showGrid);}
+function toggleSnap(){snapEnabled=!snapEnabled;document.getElementById('snap-btn').classList.toggle('active',snapEnabled);}
+
+function setLayoutMode(mode,silent){
+  layoutMode=mode;
+  ['none','vbox','hbox','grid'].forEach(m=>document.getElementById('lb-'+m).classList.toggle('active',m===mode));
+  const hints={none:'',vbox:'Widgets stack vertically — positions set by order',hbox:'Widgets stack horizontally — positions set by order',grid:'Widgets placed in a grid by row/col'};
+  document.getElementById('layout-hint').textContent=hints[mode]||'';
+  document.querySelectorAll('.layout-ghost').forEach(e=>e.remove());
+  if(mode!=='none')renderLayoutGhosts();
+  if(!silent)pushHistory();
+}
+function renderLayoutGhosts(){
+  document.querySelectorAll('.layout-ghost').forEach(e=>e.remove());
+  if(layoutMode==='none'||!widgets.length)return;
+  const cw=canvas.offsetWidth,ch=canvas.offsetHeight;
+  if(layoutMode==='vbox'){
+    const h=Math.floor(ch/Math.max(widgets.length,1));
+    widgets.forEach((w,i)=>{const g=document.createElement('div');g.className='layout-ghost';g.style.cssText=`left:10px;top:${i*h}px;width:${cw-20}px;height:${h-4}px`;canvas.appendChild(g);});
+  } else if(layoutMode==='hbox'){
+    const ww=Math.floor(cw/Math.max(widgets.length,1));
+    widgets.forEach((w,i)=>{const g=document.createElement('div');g.className='layout-ghost';g.style.cssText=`left:${i*ww}px;top:10px;width:${ww-4}px;height:${ch-20}px`;canvas.appendChild(g);});
+  } else if(layoutMode==='grid'){
+    const cols=Math.ceil(Math.sqrt(widgets.length))||1;
+    const rows=Math.ceil(widgets.length/cols);
+    const cw2=Math.floor((cw-10)/cols),ch2=Math.floor((ch-10)/rows);
+    widgets.forEach((w,i)=>{const r=Math.floor(i/cols),c=i%cols;const g=document.createElement('div');g.className='layout-ghost';g.style.cssText=`left:${c*cw2+5}px;top:${r*ch2+5}px;width:${cw2-4}px;height:${ch2-4}px`;canvas.appendChild(g);});
+  }
+}
+
+document.querySelectorAll('.pal-item').forEach(item=>{
+  item.addEventListener('dragstart',e=>{e.dataTransfer.setData('paltype',item.dataset.type);e.dataTransfer.effectAllowed='copy';});
+});
+
+palette.addEventListener('dragover',e=>{
+  if(draggingWidget){e.preventDefault();e.dataTransfer.dropEffect='move';
+    if(!palDragOver){palDragOver=true;
+      const el=document.getElementById(draggingWidget);if(el)el.classList.add('trash-hover');
+      document.querySelectorAll('.pal-item').forEach(p=>p.classList.add('trash-hover'));
+    }
+  }
+});
+palette.addEventListener('dragleave',()=>{
+  palDragOver=false;
+  if(draggingWidget){const el=document.getElementById(draggingWidget);if(el)el.classList.remove('trash-hover');}
+  document.querySelectorAll('.pal-item').forEach(p=>p.classList.remove('trash-hover'));
+});
+palette.addEventListener('drop',e=>{
+  e.preventDefault();
+  document.querySelectorAll('.pal-item').forEach(p=>p.classList.remove('trash-hover'));
+  palDragOver=false;
+  if(draggingWidget){const el=document.getElementById(draggingWidget);if(el)el.classList.remove('trash-hover');deleteWidgetById(draggingWidget);draggingWidget=null;}
+});
+
+canvas.addEventListener('dragover',e=>e.preventDefault());
+canvas.addEventListener('drop',e=>{
+  e.preventDefault();
+  const type=e.dataTransfer.getData('paltype');
+  if(!type)return;
+  const rect=canvas.getBoundingClientRect();
+  const d=defs[type]||{text:'',w:120,h:32};
+  addWidget({type,x:snap(e.clientX-rect.left-d.w/2),y:snap(e.clientY-rect.top-d.h/2),w:d.w,h:d.h,text:d.text||'',name:type.toLowerCase()+(++idCounter),enabled:true,tooltip:'',qss:'',rows:d.rows||3,cols:d.cols||3,items:'',tabs:d.text||''});
+});
+
+let canvasMouseDown=false,canvasStartX=0,canvasStartY=0;
+canvas.addEventListener('mousedown',e=>{
+  if(e.target!==canvas)return;
+  if(!e.shiftKey){deselect();multiSel.clear();}
+  canvasMouseDown=true;selBoxing=true;
+  const rect=canvas.getBoundingClientRect();
+  canvasStartX=e.clientX-rect.left;canvasStartY=e.clientY-rect.top;
+  selRect.style.cssText=`left:${canvasStartX}px;top:${canvasStartY}px;width:0;height:0;display:block`;
+});
+document.addEventListener('mousemove',e=>{
+  if(!selBoxing)return;
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  const x=Math.min(cx,canvasStartX),y=Math.min(cy,canvasStartY);
+  const w=Math.abs(cx-canvasStartX),h=Math.abs(cy-canvasStartY);
+  selRect.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
+  if(w>5||h>5){
+    const sx=Math.min(cx,canvasStartX),sy=Math.min(cy,canvasStartY),ex=sx+w,ey=sy+h;
+    widgets.forEach(ww=>{
+      if(ww.x<ex&&ww.x+ww.w>sx&&ww.y<ey&&ww.y+ww.h>sy){multiSel.add(ww.id);}
+      else if(!e.shiftKey)multiSel.delete(ww.id);
+      const el=document.getElementById(ww.id);
+      if(el){el.classList.toggle('multi-sel',multiSel.has(ww.id)&&ww.id!==selectedId);}
+    });
+    if(multiSel.size>0)showMultiPanel();
+  }
+});
+document.addEventListener('mouseup',()=>{selBoxing=false;canvasMouseDown=false;selRect.style.display='none';});
+
+function selectAll(){
+  multiSel=new Set(widgets.map(w=>w.id));
+  widgets.forEach(w=>{const el=document.getElementById(w.id);if(el)el.classList.add('multi-sel');});
+  if(multiSel.size>0)showMultiPanel();
+}
+function showMultiPanel(){
+  document.getElementById('no-sel').style.display='none';
+  document.getElementById('prop-fields').style.display='none';
+  document.getElementById('multi-panel').style.display='block';
+  document.getElementById('multi-info').textContent=`${multiSel.size} widgets selected`;
+}
+
+function alignSelected(dir){
+  const ids=[...multiSel];if(ids.length<2)return;
+  const sel=widgets.filter(w=>ids.includes(w.id));
+  if(dir==='left'){const mn=Math.min(...sel.map(w=>w.x));sel.forEach(w=>{w.x=mn;document.getElementById(w.id).style.left=mn+'px';});}
+  if(dir==='right'){const mx=Math.max(...sel.map(w=>w.x+w.w));sel.forEach(w=>{w.x=mx-w.w;document.getElementById(w.id).style.left=w.x+'px';});}
+  if(dir==='top'){const mn=Math.min(...sel.map(w=>w.y));sel.forEach(w=>{w.y=mn;document.getElementById(w.id).style.top=mn+'px';});}
+  if(dir==='bottom'){const mx=Math.max(...sel.map(w=>w.y+w.h));sel.forEach(w=>{w.y=mx-w.h;document.getElementById(w.id).style.top=w.y+'px';});}
+  if(dir==='center'){const mn=Math.min(...sel.map(w=>w.x));const mx=Math.max(...sel.map(w=>w.x+w.w));const cx=(mn+mx)/2;sel.forEach(w=>{w.x=cx-w.w/2;document.getElementById(w.id).style.left=w.x+'px';});}
+  if(dir==='middle'){const mn=Math.min(...sel.map(w=>w.y));const mx=Math.max(...sel.map(w=>w.y+w.h));const cy=(mn+mx)/2;sel.forEach(w=>{w.y=cy-w.h/2;document.getElementById(w.id).style.top=w.y+'px';});}
+  pushHistory();
+}
+
+function groupSelected(){
+  const ids=[...multiSel];if(!ids.length)return;
+  const sel=widgets.filter(w=>ids.includes(w.id));
+  const minX=Math.min(...sel.map(w=>w.x))-10,minY=Math.min(...sel.map(w=>w.y))-20;
+  const maxX=Math.max(...sel.map(w=>w.x+w.w))+10,maxY=Math.max(...sel.map(w=>w.y+w.h))+10;
+  sel.forEach(w=>{w.x-=minX;w.y-=minY;renderWidget(w);});
+  addWidget({type:'QGroupBox',x:minX,y:minY,w:maxX-minX,h:maxY-minY,text:'Group',name:'groupbox'+(++idCounter),enabled:true,tooltip:'',qss:'',items:'',tabs:''});
+  multiSel.clear();
+  document.querySelectorAll('.widget').forEach(el=>el.classList.remove('multi-sel'));
+  pushHistory();
+}
+
+function addWidget(cfg){
+  const id='w'+Date.now()+Math.random().toString(36).slice(2,5);
+  const w={id,...cfg};
+  widgets.push(w);renderWidget(w);
+  dropHint.style.display='none';
+  if(layoutMode!=='none')renderLayoutGhosts();
+  pushHistory();selectWidget(id);
+}
+
+function renderWidget(w){
+  let el=document.getElementById(w.id);
+  if(!el){
+    el=document.createElement('div');el.id=w.id;el.className='widget';el.setAttribute('draggable','true');
+    const inner=document.createElement('div');inner.className='widget-inner';el.appendChild(inner);
+    const rh=document.createElement('div');rh.className='rh';el.appendChild(rh);
+    makeDraggable(el,w);makeResizable(rh,el,w);
+    el.addEventListener('mousedown',e=>{
+      if(e.target===rh)return;
+      if(e.shiftKey){
+        multiSel.has(w.id)?multiSel.delete(w.id):multiSel.add(w.id);
+        el.classList.toggle('multi-sel',multiSel.has(w.id));
+        if(multiSel.size>0)showMultiPanel();
+      } else {
+        multiSel.clear();document.querySelectorAll('.widget').forEach(e2=>e2.classList.remove('multi-sel'));
+        selectWidget(w.id);
+      }
+    });
+    el.addEventListener('dragstart',e=>{draggingWidget=w.id;e.dataTransfer.setData('wid',w.id);e.dataTransfer.effectAllowed='move';setTimeout(()=>{const e2=document.getElementById(w.id);if(e2)e2.style.opacity='.5';},0);});
+    el.addEventListener('dragend',()=>{draggingWidget=null;palDragOver=false;const e2=document.getElementById(w.id);if(e2){e2.style.opacity='1';e2.classList.remove('trash-hover');}document.querySelectorAll('.pal-item').forEach(p=>p.classList.remove('trash-hover'));});
+    canvas.appendChild(el);
+  }
+  el.style.cssText=`left:${Math.max(0,w.x)}px;top:${Math.max(0,w.y)}px;width:${w.w}px;height:${w.h}px`;
+  if(w.qss){const bg=w.qss.match(/background[^:]*:\s*([^;]+)/i);const co=w.qss.match(/color\s*:\s*([^;]+)/i);if(bg)el.style.background=bg[1].trim();if(co)el.querySelector('.widget-inner').style.color=co[1].trim();}
+  el.classList.toggle('selected',w.id===selectedId);
+  el.classList.toggle('multi-sel',multiSel.has(w.id)&&w.id!==selectedId);
+  const fn=vis[w.type];
+  el.querySelector('.widget-inner').innerHTML=fn?fn(w.text,w):`<span style="font-size:10px">${w.type}</span>`;
+}
+
+function makeDraggable(el,w){
+  let ox,oy,sx,sy,drag=false,startXs=new Map();
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('rh'))return;
+    drag=true;ox=e.clientX;oy=e.clientY;sx=w.x;sy=w.y;
+    if(multiSel.has(w.id)){widgets.forEach(ww=>{if(multiSel.has(ww.id))startXs.set(ww.id,{x:ww.x,y:ww.y});});}
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    const dx=e.clientX-ox,dy=e.clientY-oy;
+    if(multiSel.has(w.id)&&multiSel.size>1){
+      widgets.forEach(ww=>{if(!multiSel.has(ww.id))return;const s=startXs.get(ww.id);if(!s)return;ww.x=snap(s.x+dx);ww.y=snap(s.y+dy);const el2=document.getElementById(ww.id);if(el2){el2.style.left=ww.x+'px';el2.style.top=ww.y+'px';}});
+    } else {w.x=snap(sx+dx);w.y=snap(sy+dy);el.style.left=w.x+'px';el.style.top=w.y+'px';}
+    if(selectedId===w.id)syncProps();
+  });
+  document.addEventListener('mouseup',()=>{if(drag){drag=false;startXs.clear();pushHistory();}});
+}
+function makeResizable(handle,el,w){
+  let ox,oy,sw,sh,r=false;
+  handle.addEventListener('mousedown',e=>{r=true;ox=e.clientX;oy=e.clientY;sw=w.w;sh=w.h;e.preventDefault();e.stopPropagation();});
+  document.addEventListener('mousemove',e=>{if(!r)return;w.w=Math.max(60,snap(sw+(e.clientX-ox)));w.h=Math.max(22,snap(sh+(e.clientY-oy)));el.style.width=w.w+'px';el.style.height=w.h+'px';if(selectedId===w.id)syncProps();});
+  document.addEventListener('mouseup',()=>{if(r){r=false;pushHistory();}});
+}
+
+function selectWidget(id){
+  selectedId=id;multiSel.clear();
+  document.querySelectorAll('.widget').forEach(el=>el.classList.remove('selected','multi-sel'));
+  const el=document.getElementById(id);if(el)el.classList.add('selected');
+  document.getElementById('no-sel').style.display='none';
+  document.getElementById('multi-panel').style.display='none';
+  document.getElementById('prop-fields').style.display='block';
+  syncProps();
+}
+function deselect(){
+  selectedId=null;multiSel.clear();
+  document.querySelectorAll('.widget').forEach(el=>el.classList.remove('selected','multi-sel'));
+  document.getElementById('no-sel').style.display='block';
+  document.getElementById('prop-fields').style.display='none';
+  document.getElementById('multi-panel').style.display='none';
+}
+
+function syncProps(){
+  const w=widgets.find(x=>x.id===selectedId);if(!w)return;
+  document.getElementById('p-type').value=w.type;
+  document.getElementById('p-name').value=w.name;
+  document.getElementById('p-text').value=w.text||'';
+  document.getElementById('p-w').value=Math.round(w.w);
+  document.getElementById('p-h').value=Math.round(w.h);
+  document.getElementById('p-x').value=Math.round(w.x);
+  document.getElementById('p-y').value=Math.round(w.y);
+  document.getElementById('p-enabled').value=w.enabled?'true':'false';
+  document.getElementById('p-tooltip').value=w.tooltip||'';
+  document.getElementById('p-qss').value=w.qss||'';
+  document.getElementById('items-row').style.display=['QComboBox','QListWidget'].includes(w.type)?'block':'none';
+  document.getElementById('tabs-row').style.display=w.type==='QTabWidget'?'block':'none';
+  document.getElementById('rows-row').style.display=w.type==='QTableWidget'?'block':'none';
+  document.getElementById('cols-row').style.display=w.type==='QTableWidget'?'block':'none';
+  if(w.type==='QTableWidget'){document.getElementById('p-rows').value=w.rows||3;document.getElementById('p-cols').value=w.cols||3;}
+  document.getElementById('p-items').value=w.items||'';
+  document.getElementById('p-tabs').value=w.tabs||w.text||'';
+}
+function updateProp(key,val){
+  const w=widgets.find(x=>x.id===selectedId);if(!w)return;
+  w[key]=val;
+  if(key==='w'){const el=document.getElementById(w.id);if(el)el.style.width=snap(val)+'px';w.w=snap(val);}
+  if(key==='h'){const el=document.getElementById(w.id);if(el)el.style.height=snap(val)+'px';w.h=snap(val);}
+  if(key==='x'){const el=document.getElementById(w.id);if(el)el.style.left=snap(val)+'px';w.x=snap(val);}
+  if(key==='y'){const el=document.getElementById(w.id);if(el)el.style.top=snap(val)+'px';w.y=snap(val);}
+  renderWidget(w);
+  clearTimeout(updateProp._t);updateProp._t=setTimeout(pushHistory,700);
+}
+function syncWinBar(){
+  document.getElementById('win-title-in').value=winCfg.title;
+  document.getElementById('win-w-in').value=winCfg.w;
+  document.getElementById('win-h-in').value=winCfg.h;
+  document.getElementById('win-mw').value=winCfg.minW;
+  document.getElementById('win-mh').value=winCfg.minH;
+  document.getElementById('win-res').value=winCfg.resizable?'true':'false';
+}
+
+function deleteSelected(){
+  const ids=selectedId?[selectedId]:[...multiSel];
+  ids.forEach(id=>deleteWidgetById(id,true));
+  deselect();if(widgets.length===0)dropHint.style.display='block';
+  if(layoutMode!=='none')renderLayoutGhosts();
+  pushHistory();updateUI();
+}
+function deleteWidgetById(id,batch){
+  const el=document.getElementById(id);if(el)el.remove();
+  widgets=widgets.filter(w=>w.id!==id);
+  if(!batch){if(selectedId===id)deselect();if(widgets.length===0)dropHint.style.display='block';if(layoutMode!=='none')renderLayoutGhosts();pushHistory();updateUI();}
+}
+function clearAll(){
+  document.querySelectorAll('.widget,.layout-ghost').forEach(e=>e.remove());
+  widgets=[];deselect();dropHint.style.display='block';pushHistory();updateUI();
+}
+
+function exportProject(){
+  if(!widgets.length){alert('Add some widgets first.');return;}
+  const proj={version:2,created:new Date().toISOString(),winCfg,layoutMode,widgets:widgets.map(({id,...r})=>r)};
+  const blob=new Blob([JSON.stringify(proj,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pyside6-design.json';a.click();URL.revokeObjectURL(a.href);
+}
+function openImport(){document.getElementById('import-area').value='';document.getElementById('import-err').textContent='';document.getElementById('import-modal').classList.add('open');}
+function closeImport(){document.getElementById('import-modal').classList.remove('open');}
+function loadFile(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>document.getElementById('import-area').value=e.target.result;r.readAsText(f);}
+function doImport(){
+  try{
+    const proj=JSON.parse(document.getElementById('import-area').value.trim());
+    if(!proj.widgets||!Array.isArray(proj.widgets))throw new Error('Missing widgets array');
+    document.querySelectorAll('.widget,.layout-ghost').forEach(e=>e.remove());
+    idCounter=0;widgets=[];
+    if(proj.winCfg)Object.assign(winCfg,proj.winCfg);
+    syncWinBar();
+    proj.widgets.forEach(w=>{idCounter++;widgets.push({...w,id:'w'+Date.now()+Math.random().toString(36).slice(2,5)});});
+    widgets.forEach(w=>renderWidget(w));
+    dropHint.style.display=widgets.length?'none':'block';
+    if(proj.layoutMode)setLayoutMode(proj.layoutMode,true);
+    deselect();pushHistory();updateUI();closeImport();
+  }catch(e){document.getElementById('import-err').textContent='Error: '+e.message;}
+}
+
+function openCode(){
+  if(!widgets.length){alert('Add some widgets first.');return;}
+  document.getElementById('code-pre').textContent=buildCode();
+  document.getElementById('code-modal').classList.add('open');
+}
+function closeCode(){document.getElementById('code-modal').classList.remove('open');}
+function copyCode(){navigator.clipboard.writeText(document.getElementById('code-pre').textContent).then(()=>{const b=document.querySelector('#code-modal .hbtns button');const o=b.textContent;b.textContent='Copied!';setTimeout(()=>b.textContent=o,1500);});}
+
+function buildCode(){
+  const imp=new Set(['QApplication','QMainWindow','QWidget']);
+  widgets.forEach(w=>imp.add(w.type));
+  const layoutImp={vbox:'QVBoxLayout',hbox:'QHBoxLayout',grid:'QGridLayout'};
+  if(layoutMode!=='none')imp.add(layoutImp[layoutMode]);
+  let L=[];
+  L.push('import sys');
+  L.push(`from PySide6.QtWidgets import (${[...imp].sort().join(', ')})`);
+  L.push('from PySide6.QtCore import Qt');L.push('');L.push('');
+  L.push('class MainWindow(QMainWindow):');
+  L.push('    def __init__(self):');L.push('        super().__init__()');
+  L.push(`        self.setWindowTitle("${winCfg.title||'My Application'}")`);
+  L.push(`        self.resize(${winCfg.w||800}, ${winCfg.h||600})`);
+  if(winCfg.minW||winCfg.minH)L.push(`        self.setMinimumSize(${winCfg.minW||0}, ${winCfg.minH||0})`);
+  if(!winCfg.resizable)L.push('        self.setFixedSize(self.size())');
+  L.push('');L.push('        central = QWidget()');L.push('        self.setCentralWidget(central)');
+  if(layoutMode!=='none'){
+    const ln={vbox:'QVBoxLayout',hbox:'QHBoxLayout',grid:'QGridLayout'};
+    L.push(`        layout = ${ln[layoutMode]}(central)`);
+    L.push('        central.setLayout(layout)');
+  }
+  L.push('');L.push('        self._setup_widgets(central)');L.push('');
+  L.push('    def _setup_widgets(self, parent):');
+
+  const gridTrack=new Map();
+  widgets.forEach((w,idx)=>{
+    const n=w.name;
+    L.push(`        self.${n} = ${w.type}(parent)`);
+    if(layoutMode==='none'){
+      L.push(`        self.${n}.setGeometry(${Math.round(w.x)}, ${Math.round(w.y)}, ${Math.round(w.w)}, ${Math.round(w.h)})`);
+    } else if(layoutMode==='vbox'||layoutMode==='hbox'){
+      L.push(`        layout.addWidget(self.${n})`);
+    } else if(layoutMode==='grid'){
+      const cols=Math.ceil(Math.sqrt(widgets.length))||1;
+      const row=Math.floor(idx/cols),col=idx%cols;
+      L.push(`        layout.addWidget(self.${n}, ${row}, ${col})`);
+    }
+    if(['QPushButton','QLabel','QCheckBox','QRadioButton','QGroupBox','QStatusBar','QMenuBar'].includes(w.type)&&w.text)
+      L.push(`        self.${n}.setText("${(w.text||'').replace(/\n/g,' ')}")`);
+    if(w.type==='QLineEdit'&&w.text)L.push(`        self.${n}.setPlaceholderText("${w.text}")`);
+    if(w.type==='QTextEdit'&&w.text)L.push(`        self.${n}.setPlaceholderText("${w.text}")`);
+    if(w.type==='QComboBox'){
+      const items=(w.items||w.text||'Option 1\nOption 2\nOption 3').split('\n').filter(Boolean);
+      L.push(`        self.${n}.addItems([${items.map(i=>`"${i}"`).join(', ')}])`);
+    }
+    if(w.type==='QListWidget'){
+      const items=(w.items||w.text||'Item 1\nItem 2\nItem 3').split('\n').filter(Boolean);
+      L.push(`        self.${n}.addItems([${items.map(i=>`"${i}"`).join(', ')}])`);
+    }
+    if(w.type==='QTabWidget'){
+      const tabs=(w.tabs||w.text||'Tab 1\nTab 2').split('\n').filter(Boolean);
+      tabs.forEach((t,i)=>L.push(`        self.${n}.addTab(QWidget(), "${t}")`));
+    }
+    if(w.type==='QTableWidget')L.push(`        self.${n}.setRowCount(${w.rows||3})\n        self.${n}.setColumnCount(${w.cols||3})`);
+    if(w.type==='QSlider'){L.push(`        self.${n}.setOrientation(Qt.Horizontal)`);L.push(`        self.${n}.setRange(0, 100)`);}
+    if(w.type==='QSpinBox')L.push(`        self.${n}.setRange(0, 100)`);
+    if(w.type==='QProgressBar')L.push(`        self.${n}.setValue(60)`);
+    if(!w.enabled)L.push(`        self.${n}.setEnabled(False)`);
+    if(w.tooltip)L.push(`        self.${n}.setToolTip("${w.tooltip}")`);
+    if(w.qss)L.push(`        self.${n}.setStyleSheet("${w.qss.replace(/\n/g,' ')}")`);
+    if(w.type==='QPushButton')L.push(`        self.${n}.clicked.connect(self.on_${n}_clicked)`);
+    L.push('');
+  });
+  const btns=widgets.filter(w=>w.type==='QPushButton');
+  if(btns.length){L.push('');btns.forEach(w=>{L.push(`    def on_${w.name}_clicked(self):`);L.push(`        print("${w.name} clicked")`);L.push('');});}
+  L.push('');L.push('def main():');L.push('    app = QApplication(sys.argv)');
+  L.push('    window = MainWindow()');L.push('    window.show()');L.push('    sys.exit(app.exec())');
+  L.push('');L.push('');L.push('if __name__ == "__main__":');L.push('    main()');
+  return L.join('\n');
+}
+
+pushHistory();
+</script></body>
+</html>

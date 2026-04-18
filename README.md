@@ -1,5 +1,5 @@
 # Graphical Py
-Perhaps you've tried to use the QT python graphical designer, but didn't like their conditions. Or perhaps you're new to Python GUI and you want a good and easy tool. Either way, you've come to the right place!
+For those of you that have tried the QT graphical python designer, you might find it's <i>quid pro quo<i> condition of use annoying. And some of you might just be looking for a good Python GUI designer
 
 Graphical Py is a very simple yet effective tool for designing Python GUIs. It provides a graphical interface for designing GUI, and can then output the Python code.
 
